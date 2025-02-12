@@ -24,7 +24,7 @@ def load_data(directory):
             people[row["id"]] = {
                 "name": row["name"],
                 "birth": row["birth"],
-                "movies": set()
+                "movies": set(),
             }
             if row["name"].lower() not in names:
                 names[row["name"].lower()] = {row["id"]}
@@ -38,7 +38,7 @@ def load_data(directory):
             movies[row["id"]] = {
                 "title": row["title"],
                 "year": row["year"],
-                "stars": set()
+                "stars": set(),
             }
 
     # Load stars
@@ -91,10 +91,29 @@ def shortest_path(source, target):
 
     If no possible path, returns None.
     """
-    
-    # TODO
-    raise NotImplementedError
-        
+    if target == source:
+        return []
+
+    frontier = QueueFrontier()
+    source_node = Node(source, None, None)
+    frontier.add(source_node)
+    seen_states = set()
+    seen_states.add(source)
+    while not frontier.empty():
+        front = frontier.remove()
+        for movie_id, person_id in neighbors_for_person(front.state):
+            if person_id == target:
+                path = [(movie_id, target)]
+                while front.parent is not None:
+                    path.append((front.action, front.state))
+                    front = front.parent
+                path.reverse()
+                return path
+            elif person_id not in seen_states:
+                child = Node(person_id, front, movie_id)
+                frontier.add(child)
+                seen_states.add(person_id)
+    return None
 
 
 def person_id_for_name(name):
@@ -138,3 +157,8 @@ def neighbors_for_person(person_id):
 
 if __name__ == "__main__":
     main()
+
+"""
+Gary Sinise
+Sally Field
+"""
