@@ -2,9 +2,11 @@ import os
 import random
 import re
 import sys
+from collections import Counter
 
 DAMPING = 0.85
 SAMPLES = 10000
+ERROR = 0.001
 
 
 def main():
@@ -40,10 +42,7 @@ def crawl(directory):
 
     # Only include links to other pages in the corpus
     for filename in pages:
-        pages[filename] = set(
-            link for link in pages[filename]
-            if link in pages
-        )
+        pages[filename] = set(link for link in pages[filename] if link in pages)
 
     return pages
 
@@ -57,7 +56,13 @@ def transition_model(corpus, page, damping_factor):
     linked to by `page`. With probability `1 - damping_factor`, choose
     a link at random chosen from all pages in the corpus.
     """
-    raise NotImplementedError
+    ret = {}
+    num_pages = len(corpus)
+    for pg in corpus.keys():
+        ret[pg] = (1 - damping_factor) * 1 / num_pages
+    for pg in corpus[page]:
+        ret[pg] += damping_factor / len(corpus[page])
+    return ret
 
 
 def sample_pagerank(corpus, damping_factor, n):
@@ -69,7 +74,18 @@ def sample_pagerank(corpus, damping_factor, n):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
-    raise NotImplementedError
+    sample = []
+    sample.append(random.choice(list(corpus.keys())))
+    while len(sample) < n:
+        pages, probs = zip(
+            *list(transition_model(corpus, sample[-1], damping_factor).items())
+        )
+        new_page = random.choices(pages, probs)[0]
+        sample.append(new_page)
+    ret = Counter(sample)
+    for page in ret:
+        ret[page] /= n
+    return ret
 
 
 def iterate_pagerank(corpus, damping_factor):
@@ -81,7 +97,29 @@ def iterate_pagerank(corpus, damping_factor):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
-    raise NotImplementedError
+    num_pages = len(corpus)
+    ret = {page: 1 / num_pages for page in corpus}
+    accurate = False
+    while not accurate:
+        new_ret = {page: (1 - damping_factor) / num_pages for page in corpus}
+        for page in corpus:
+            num_links = len(corpus[page])
+            if num_links:
+                for pg in corpus[page]:
+                    new_ret[pg] += damping_factor * ret[page] / num_links
+            else:
+                # Page with no link
+                num_links = num_pages
+                for pg in corpus:
+                    new_ret[pg] += damping_factor * ret[page] / num_links
+        diff = []
+        for page in corpus:
+            diff.append(abs(new_ret[page] - ret[page]))
+        ret = new_ret
+        error = max(diff)
+        if error < ERROR:
+            accurate = True
+    return ret
 
 
 if __name__ == "__main__":
